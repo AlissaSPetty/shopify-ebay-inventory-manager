@@ -20,14 +20,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const response = await admin.graphql(
     `#graphql
       query inventoryItems {
-        inventoryItems(first: 5) {
+        inventoryItems(first: 10) {
           edges {
             node {
               id
-              tracked
               sku
+              tracked
+              inventoryLevels(first: 5) {
+                edges {
+                  node {
+                    quantities(names: ["available"]) {
+                      name
+                      quantity
+                    }
+                  }
+                }
+              }
             }
-          }
+          } 
         }
       }`
   );
@@ -64,8 +74,14 @@ export default function Index() {
         <s-section heading="Inventory Items">
           {fetcher.data.inventory.inventoryItems.edges.map((edge) => (
             <s-paragraph key={edge.node.id}>
-              ID: {edge.node.id}, SKU: {edge.node.sku}, Tracked:{" "}
-              {edge.node.tracked ? "Yes" : "No"}
+              ID: {edge.node.id}, 
+              SKU: {edge.node.sku}, 
+              Tracked: {edge.node.tracked ? "Yes" : "No"}, 
+              inventoryLevels: { edge.node.inventoryLevels.edges.map((levelEdge) => (
+                <span key={levelEdge.node.quantities[0].name}>
+                  {levelEdge.node.quantities[0].name}: {levelEdge.node.quantities[0].quantity}{" "}
+                </span>
+              )) }
             </s-paragraph>
           ))}
         </s-section>
