@@ -30,3 +30,12 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model EbayToken {
+  shop          String   @id
+  accessToken   String
+  refreshToken  String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

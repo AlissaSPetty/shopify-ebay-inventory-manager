@@ -6,28 +6,39 @@ import type {
 import { useLoaderData, useFetcher } from "react-router";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { exchangeCodeForToken, buildEbayConsentUrl } from "../components/ebay-auth.server";
+import { getAccessToken, buildEbayConsentUrl } from "../components/ebay-auth.server";
 
 /* ------------------------------------------------------------------ */
 /*  Loader – handles the eBay redirect callback (?code=…)            */
 /* ------------------------------------------------------------------ */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
 
-  // No code yet – just render the page with the authorize button
-  if (!code) {
-    return { step: "authorize" as const };
+  // Try to get a valid access token (refresh-first, then code exchange)
+  let accessToken: string;
+  try {
+    const result = await getAccessToken(shop, code);
+    accessToken = result.accessToken;
+    if (result.fromRefresh) {
+      console.log("eBay token refreshed for", shop);
+    } else {
+      console.log("eBay token obtained from code exchange ✓");
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    // No stored token and no code – user must authorize
+    if (message === "NO_TOKEN") {
+      return { step: "authorize" as const };
+    }
+    console.error("ebay-store-inventory token error", err);
+    return { step: "error" as const, error: message };
   }
 
-  // We have a code – exchange it and fetch inventory in one go
   try {
-    console.log("Exchanging eBay auth code for user token…");
-    const tokenData = await exchangeCodeForToken(code);
-    const accessToken = tokenData.access_token;
-    console.log("User token obtained ✓");
 
     const invResp = await fetch(
       "https://api.sandbox.ebay.com/sell/inventory/v1/inventory_item?limit=25&offset=0",
@@ -60,9 +71,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     console.log("Inventory fetched ✓", invData);
     return { step: "inventory" as const, inventory: invData };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("ebay-store-inventory error", err);
-    return { step: "error" as const, error: err.message };
+    return { step: "error" as const, error: message };
   }
 };
 
