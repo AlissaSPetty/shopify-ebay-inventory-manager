@@ -20,7 +20,9 @@ export default function App() {
       <s-app-nav>
         <s-link href="/app">Home</s-link>
         <s-link href="/app/additional">Additional page</s-link>
-        <s-link href="/app/inventory">Inventory page</s-link>
+        <s-link href="/app/get-shopify-inventory">Get Inventory List</s-link>
+        <s-link href="/app/change-shopify-inventory">Change Inventory</s-link>
+        <s-link href="/app/ebay-store-inventory">eBay Store Inventory</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
